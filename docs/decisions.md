@@ -21,6 +21,9 @@ Use MySQL 8 spatial functions (`ST_Distance_Sphere`, `POINT` column type) instea
 **Trade-offs:**  
 If query latency becomes a bottleneck at scale, introduce Redis Geo as a read-through cache in front of MySQL without changing the write path.
 
+**Throughput ceiling (explicit):**  
+The `ST_Distance_Sphere` query over a `SPATIAL INDEX` is suitable for dozens of concurrent assignment requests and a fleet of up to ~10k active drivers per region. Beyond that, a full table scan of available drivers becomes the bottleneck. Re-architecting options at ride-share scale: a managed geospatial store (e.g. Redis Geo, PostGIS, or a dedicated geo-search service) as a read-through cache in front of MySQL, or sharding the `driver_locations` table by geographic region.
+
 ---
 
 ## ADR-002 — Single MySQL instance, per-service databases

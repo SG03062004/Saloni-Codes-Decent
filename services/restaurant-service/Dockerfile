@@ -5,8 +5,7 @@ RUN mvn dependency:go-offline -q
 COPY src ./src
 RUN mvn package -DskipTests -q
 
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
-COPY src/main/resources/logback-json.xml logback-json.xml 2>/dev/null || true
 ENTRYPOINT ["java", "-jar", "app.jar"]

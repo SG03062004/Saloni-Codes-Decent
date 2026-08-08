@@ -84,111 +84,131 @@ services:
         order-service=http://order-service:8082/actuator/health,
         delivery-service=http://delivery-service:8083/actuator/health,
         eta-service=http://eta-service:8084/health,
-        assignment-service=http://assignment-service:8085/health
+        assignment-service=http://assignment-service:8085/health,
+        notification-service=http://notification-service:8086/health
 
   # ── App service placeholders (uncomment as each service is built) ──────────
   # Each block is ready to go — just remove the leading # characters.
   # healthcheck paths: Java → /actuator/health, Python/Node → /health
 
-  # restaurant-service:
-  #   build: ../services/restaurant-service
-  #   networks: [delivery-net]
-  #   ports:
-  #     - "8081:8081"
-  #   depends_on:
-  #     mysql:
-  #       condition: service_healthy
-  #     kafka:
-  #       condition: service_healthy
-  #   environment:
-  #     SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/restaurant_db
-  #     SPRING_DATASOURCE_USERNAME: root
-  #     SPRING_DATASOURCE_PASSWORD: root
-  #     SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-  #   healthcheck:
-  #     test: ["CMD", "wget", "-qO-", "http://localhost:8081/actuator/health"]
-  #     interval: 20s
-  #     timeout: 5s
-  #     retries: 6
-  #     start_period: 40s
+  restaurant-service:
+    build: ../services/restaurant-service
+    networks: [delivery-net]
+    ports:
+      - "8081:8081"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/restaurant_db
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/actuator/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 6
+      start_period: 40s
 
-  # order-service:
-  #   build: ../services/order-service
-  #   networks: [delivery-net]
-  #   ports:
-  #     - "8082:8082"
-  #   depends_on:
-  #     mysql:
-  #       condition: service_healthy
-  #     kafka:
-  #       condition: service_healthy
-  #   environment:
-  #     SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/order_db
-  #     SPRING_DATASOURCE_USERNAME: root
-  #     SPRING_DATASOURCE_PASSWORD: root
-  #     SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-  #   healthcheck:
-  #     test: ["CMD", "wget", "-qO-", "http://localhost:8082/actuator/health"]
-  #     interval: 20s
-  #     timeout: 5s
-  #     retries: 6
-  #     start_period: 40s
+  order-service:
+    build: ../services/order-service
+    networks: [delivery-net]
+    ports:
+      - "8082:8082"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/order_db
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/actuator/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 6
+      start_period: 40s
 
-  # delivery-service:
-  #   build: ../services/delivery-service
-  #   networks: [delivery-net]
-  #   ports:
-  #     - "8083:8083"
-  #   depends_on:
-  #     mysql:
-  #       condition: service_healthy
-  #     kafka:
-  #       condition: service_healthy
-  #   environment:
-  #     SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/delivery_db
-  #     SPRING_DATASOURCE_USERNAME: root
-  #     SPRING_DATASOURCE_PASSWORD: root
-  #     SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-  #   healthcheck:
-  #     test: ["CMD", "wget", "-qO-", "http://localhost:8083/actuator/health"]
-  #     interval: 20s
-  #     timeout: 5s
-  #     retries: 6
-  #     start_period: 40s
+  delivery-service:
+    build: ../services/delivery-service
+    networks: [delivery-net]
+    ports:
+      - "8083:8083"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/delivery_db
+      DB_USER: root
+      DB_PASS: root
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8083/actuator/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 6
+      start_period: 40s
 
-  # eta-service:
-  #   build: ../services/eta-service
-  #   networks: [delivery-net]
-  #   ports:
-  #     - "8084:8084"
-  #   depends_on:
-  #     kafka:
-  #       condition: service_healthy
-  #   environment:
-  #     KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-  #   healthcheck:
-  #     test: ["CMD", "wget", "-qO-", "http://localhost:8084/health"]
-  #     interval: 15s
-  #     timeout: 5s
-  #     retries: 6
-  #     start_period: 20s
+  eta-service:
+    build: ../services/eta-service
+    networks: [delivery-net]
+    ports:
+      - "8084:8084"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8084/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
 
-  # assignment-service:
-  #   build: ../services/assignment-service
-  #   networks: [delivery-net]
-  #   ports:
-  #     - "8085:8085"
-  #   depends_on:
-  #     mysql:
-  #       condition: service_healthy
-  #     kafka:
-  #       condition: service_healthy
-  #   environment:
-  #     KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-  #     DB_URL: mysql+pymysql://root:root@mysql:3306/assignment_db
-  #   healthcheck:
-  #     test: ["CMD", "wget", "-qO-", "http://localhost:8085/health"]
-  #     interval: 15s
-  #     timeout: 5s
-  #     retries: 6
-  #     start_period: 20s
+  notification-service:
+    build: ../services/notification-service
+    networks: [delivery-net]
+    ports:
+      - "8086:8086"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      DB_URL: mysql+aiomysql://root:root@mysql:3306/notification_db
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8086/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  assignment-service:
+    build: ../services/assignment-service
+    networks: [delivery-net]
+    ports:
+      - "8085:8085"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      DB_URL: mysql+aiomysql://root:root@mysql:3306/assignment_db
+      ETA_SERVICE_URL: http://eta-service:8084
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8085/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
