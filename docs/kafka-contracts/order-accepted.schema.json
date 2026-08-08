@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fooddelivery.internal/schemas/order-accepted.schema.json",
+  "title": "OrderAccepted",
+  "description": "Published by restaurant-service when a restaurant accepts an order. Consumed by order-service and eta-service.",
+  "allOf": [
+    { "$ref": "envelope.schema.json" },
+    {
+      "properties": {
+        "eventType": { "const": "order-accepted" },
+        "payload": {
+          "type": "object",
+          "required": ["orderId", "restaurantId", "prepTimeMinutes"],
+          "additionalProperties": false,
+          "properties": {
+            "orderId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "restaurantId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "prepTimeMinutes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 120,
+              "description": "Estimated kitchen prep time. ETA service adds this to drive time."
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,129 @@
+openapi: 3.1.0
+info:
+  title: restaurant-service
+  version: 0.0.1
+  description: Manages restaurants and menus. Consumes order-created, publishes order-accepted.
+
+servers:
+  - url: http://localhost:8081
+
+paths:
+  /health:
+    get:
+      summary: Liveness probe
+      operationId: health
+      responses:
+        "200":
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /metrics-lite:
+    get:
+      summary: Lightweight operational snapshot for ops-dashboard polling
+      operationId: metricsLite
+      responses:
+        "200":
+          description: Current service metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetricsLiteResponse"
+
+  /restaurants/{restaurantId}:
+    get:
+      summary: Get restaurant details
+      operationId: getRestaurant
+      parameters:
+        - name: restaurantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Restaurant found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Restaurant"
+        "404":
+          description: Not found
+
+  /restaurants/{restaurantId}/menu:
+    get:
+      summary: Get menu for a restaurant
+      operationId: getMenu
+      parameters:
+        - name: restaurantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Menu items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MenuItem"
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [UP, DOWN]
+
+    MetricsLiteResponse:
+      type: object
+      required: [service, status, uptimeSeconds, ordersAcceptedTotal, ordersRejectedTotal]
+      properties:
+        service:
+          type: string
+          example: restaurant-service
+        status:
+          type: string
+          enum: [UP, DOWN]
+        uptimeSeconds:
+          type: integer
+        ordersAcceptedTotal:
+          type: integer
+        ordersRejectedTotal:
+          type: integer
+
+    Restaurant:
+      type: object
+      required: [restaurantId, name, isOpen]
+      properties:
+        restaurantId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        isOpen:
+          type: boolean
+
+    MenuItem:
+      type: object
+      required: [menuItemId, name, priceCents, available]
+      properties:
+        menuItemId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        priceCents:
+          type: integer
+          minimum: 0
+        available:
+          type: boolean

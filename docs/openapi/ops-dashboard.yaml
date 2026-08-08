@@ -1,0 +1,107 @@
+openapi: 3.1.0
+info:
+  title: ops-dashboard
+  version: 0.0.1
+  description: |
+    Internal ops view. Polls /health and /metrics-lite on every service.
+    The MetricsLiteResponse shape here is the canonical contract — all services must match it.
+
+servers:
+  - url: http://localhost:3000
+
+paths:
+  /health:
+    get:
+      summary: Liveness probe
+      operationId: health
+      responses:
+        "200":
+          description: Dashboard is up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /status:
+    get:
+      summary: Aggregated health of all services (dashboard polls each service /health)
+      operationId: getStatus
+      responses:
+        "200":
+          description: Per-service health rollup
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [services]
+                properties:
+                  services:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ServiceStatus"
+
+  /metrics:
+    get:
+      summary: Aggregated metrics-lite from all services
+      operationId: getMetrics
+      responses:
+        "200":
+          description: Per-service metrics snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [collectedAt, services]
+                properties:
+                  collectedAt:
+                    type: string
+                    format: date-time
+                  services:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/MetricsLiteResponse"
+
+# ── Canonical MetricsLiteResponse shape ──────────────────────────────────────
+# Every service's /metrics-lite MUST return an object that satisfies the
+# base fields below. Service-specific counters are allowed as additionalProperties.
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [UP, DOWN]
+
+    ServiceStatus:
+      type: object
+      required: [service, url, status]
+      properties:
+        service:
+          type: string
+        url:
+          type: string
+          format: uri
+        status:
+          type: string
+          enum: [UP, DOWN, UNREACHABLE]
+        checkedAt:
+          type: string
+          format: date-time
+
+    MetricsLiteResponse:
+      type: object
+      required: [service, status, uptimeSeconds]
+      additionalProperties: true
+      properties:
+        service:
+          type: string
+          description: Service name, e.g. order-service
+        status:
+          type: string
+          enum: [UP, DOWN]
+        uptimeSeconds:
+          type: integer
+          description: Seconds since the process started

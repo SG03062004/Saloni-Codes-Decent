@@ -1,0 +1,44 @@
+# Java
+target/
+*.class
+*.jar
+*.war
+*.ear
+.mvn/
+!**/src/main/**/target/
+!**/src/test/**/target/
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+.pytest_cache/
+.mypy_cache/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+.npm
+.env
+
+# Docker
+.docker/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/

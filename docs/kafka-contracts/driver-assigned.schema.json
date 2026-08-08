@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fooddelivery.internal/schemas/driver-assigned.schema.json",
+  "title": "DriverAssigned",
+  "description": "Published by assignment-service after the nearest available driver is selected via MySQL spatial query. Consumed by order-service and delivery-service.",
+  "allOf": [
+    { "$ref": "envelope.schema.json" },
+    {
+      "properties": {
+        "eventType": { "const": "driver-assigned" },
+        "payload": {
+          "type": "object",
+          "required": [
+            "orderId",
+            "driverId",
+            "etaMinutes",
+            "driverLocation",
+            "restaurantLocation",
+            "deliveryLocation"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "orderId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "driverId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "etaMinutes": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Initial ETA estimate at time of assignment (drive time + prep time)."
+            },
+            "driverLocation": { "$ref": "#/$defs/geoPoint" },
+            "restaurantLocation": { "$ref": "#/$defs/geoPoint" },
+            "deliveryLocation": { "$ref": "#/$defs/geoPoint" }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "geoPoint": {
+      "type": "object",
+      "required": ["lat", "lng"],
+      "additionalProperties": false,
+      "properties": {
+        "lat": { "type": "number", "minimum": -90,  "maximum": 90  },
+        "lng": { "type": "number", "minimum": -180, "maximum": 180 }
+      }
+    }
+  }
+}

@@ -1,0 +1,143 @@
+openapi: 3.1.0
+info:
+  title: delivery-service
+  version: 0.0.1
+  description: Tracks live delivery state and driver location. Consumes driver-assigned, publishes order-delivered.
+
+servers:
+  - url: http://localhost:8083
+
+paths:
+  /health:
+    get:
+      summary: Liveness probe
+      operationId: health
+      responses:
+        "200":
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /metrics-lite:
+    get:
+      summary: Lightweight operational snapshot for ops-dashboard polling
+      operationId: metricsLite
+      responses:
+        "200":
+          description: Current service metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetricsLiteResponse"
+
+  /deliveries/{orderId}:
+    get:
+      summary: Get live delivery state for an order
+      operationId: getDelivery
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Delivery found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliveryResponse"
+        "404":
+          description: Not found
+
+  /drivers/{driverId}/location:
+    put:
+      summary: Update driver GPS location (called by driver mobile app)
+      operationId: updateDriverLocation
+      parameters:
+        - name: driverId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocationUpdate"
+      responses:
+        "204":
+          description: Location updated
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [UP, DOWN]
+
+    MetricsLiteResponse:
+      type: object
+      required: [service, status, uptimeSeconds, activeDeliveries, deliveriesCompletedTotal]
+      properties:
+        service:
+          type: string
+          example: delivery-service
+        status:
+          type: string
+          enum: [UP, DOWN]
+        uptimeSeconds:
+          type: integer
+        activeDeliveries:
+          type: integer
+        deliveriesCompletedTotal:
+          type: integer
+
+    DeliveryResponse:
+      type: object
+      required: [orderId, driverId, status]
+      properties:
+        orderId:
+          type: string
+          format: uuid
+        driverId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [EN_ROUTE_TO_RESTAURANT, EN_ROUTE_TO_CUSTOMER, DELIVERED]
+        currentLocation:
+          $ref: "#/components/schemas/GeoPoint"
+        etaMinutes:
+          type: integer
+          nullable: true
+
+    LocationUpdate:
+      type: object
+      required: [lat, lng]
+      properties:
+        lat:
+          type: number
+          minimum: -90
+          maximum: 90
+        lng:
+          type: number
+          minimum: -180
+          maximum: 180
+
+    GeoPoint:
+      type: object
+      required: [lat, lng]
+      properties:
+        lat:
+          type: number
+        lng:
+          type: number

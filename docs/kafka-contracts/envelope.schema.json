@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fooddelivery.internal/schemas/envelope.schema.json",
+  "title": "EventEnvelope",
+  "description": "Common wrapper present on every Kafka event.",
+  "type": "object",
+  "required": ["eventId", "eventType", "timestamp", "version", "payload"],
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique ID for this event instance — used for idempotency checks."
+    },
+    "eventType": {
+      "type": "string",
+      "description": "Matches the Kafka topic name, e.g. order-created."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp of when the event was produced."
+    },
+    "version": {
+      "type": "string",
+      "enum": ["1"],
+      "description": "Schema version — increment when making breaking payload changes."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Event-specific data — defined by each event schema."
+    }
+  },
+  "additionalProperties": false
+}
