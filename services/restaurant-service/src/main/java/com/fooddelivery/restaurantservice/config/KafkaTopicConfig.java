@@ -9,13 +9,11 @@ import org.springframework.kafka.config.TopicBuilder;
 @Configuration
 public class KafkaTopicConfig {
 
-    @Value("${kafka.topics.order-accepted}") private String orderAcceptedTopic;
+  @Value("${kafka.topics.order-accepted}")
+  private String orderAcceptedTopic;
 
-    @Bean
-    public NewTopic orderAcceptedTopic() {
-        return TopicBuilder.name(orderAcceptedTopic)
-                .partitions(3)
-                .replicas(1)
-                .build();
-    }
+  @Bean
+  public NewTopic orderAcceptedTopic() {
+    return TopicBuilder.name(orderAcceptedTopic).partitions(3).replicas(1).build();
+  }
 }

@@ -14,35 +14,36 @@ import org.springframework.stereotype.Component;
 @Component
 public class OrderEventConsumer {
 
-    private static final Logger log = LoggerFactory.getLogger(OrderEventConsumer.class);
+  private static final Logger log = LoggerFactory.getLogger(OrderEventConsumer.class);
 
-    private final OrderService orderService;
+  private final OrderService orderService;
 
-    public OrderEventConsumer(OrderService orderService) {
-        this.orderService = orderService;
+  public OrderEventConsumer(OrderService orderService) {
+    this.orderService = orderService;
+  }
+
+  @KafkaListener(topics = "${kafka.topics.order-accepted}", groupId = "order-service-group")
+  public void onOrderAccepted(@Payload EventEnvelope<OrderAcceptedEvent> envelope) {
+    OrderAcceptedEvent event = envelope.payload();
+    MDC.put("orderId", event.orderId());
+    try {
+      log.info("Received order-accepted orderId={}", event.orderId());
+      orderService.markAccepted(event.orderId());
+    } finally {
+      MDC.remove("orderId");
     }
+  }
 
-    @KafkaListener(topics = "${kafka.topics.order-accepted}", groupId = "order-service-group")
-    public void onOrderAccepted(@Payload EventEnvelope<OrderAcceptedEvent> envelope) {
-        OrderAcceptedEvent event = envelope.payload();
-        MDC.put("orderId", event.orderId());
-        try {
-            log.info("Received order-accepted orderId={}", event.orderId());
-            orderService.markAccepted(event.orderId());
-        } finally {
-            MDC.remove("orderId");
-        }
+  @KafkaListener(topics = "${kafka.topics.driver-assigned}", groupId = "order-service-group")
+  public void onDriverAssigned(@Payload EventEnvelope<DriverAssignedEvent> envelope) {
+    DriverAssignedEvent event = envelope.payload();
+    MDC.put("orderId", event.orderId());
+    try {
+      log.info(
+          "Received driver-assigned orderId={} etaMinutes={}", event.orderId(), event.etaMinutes());
+      orderService.markDriverAssigned(event.orderId(), event.etaMinutes());
+    } finally {
+      MDC.remove("orderId");
     }
-
-    @KafkaListener(topics = "${kafka.topics.driver-assigned}", groupId = "order-service-group")
-    public void onDriverAssigned(@Payload EventEnvelope<DriverAssignedEvent> envelope) {
-        DriverAssignedEvent event = envelope.payload();
-        MDC.put("orderId", event.orderId());
-        try {
-            log.info("Received driver-assigned orderId={} etaMinutes={}", event.orderId(), event.etaMinutes());
-            orderService.markDriverAssigned(event.orderId(), event.etaMinutes());
-        } finally {
-            MDC.remove("orderId");
-        }
-    }
+  }
 }

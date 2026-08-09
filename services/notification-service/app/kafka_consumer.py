@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import json
 
 from aiokafka import AIOKafkaConsumer
@@ -14,7 +15,7 @@ log = get_logger("notification-service.consumer")
 TOPICS = ["order-created", "order-delivered"]
 
 _HANDLERS = {
-    "order-created":   handle_order_created,
+    "order-created": handle_order_created,
     "order-delivered": handle_order_delivered,
 }
 
@@ -57,5 +58,9 @@ async def _dispatch(raw: bytes, channel: NotificationChannel) -> None:
     except Exception as exc:
         log.error(
             "handler_error",
-            extra={"eventType": event.eventType, "orderId": event.payload.get("orderId"), "error": str(exc)},
+            extra={
+                "eventType": event.eventType,
+                "orderId": event.payload.get("orderId"),
+                "error": str(exc),
+            },
         )

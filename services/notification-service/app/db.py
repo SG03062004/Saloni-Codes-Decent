@@ -1,8 +1,10 @@
 from __future__ import annotations
+
 import json
 import uuid
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.models import Settings
 
@@ -28,10 +30,12 @@ async def record_notification(
     payload: dict,
 ) -> None:
     await session.execute(
-        text("""
+        text(
+            """
             INSERT INTO notifications (id, order_id, event_type, channel, recipient, payload_json)
             VALUES (:id, :order_id, :event_type, :channel, :recipient, :payload_json)
-        """),
+        """
+        ),
         {
             "id": str(uuid.uuid4()),
             "order_id": order_id,

@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from typing import Protocol
+
 from app.logging_config import get_logger
 
 log = get_logger("notification-service.channel")

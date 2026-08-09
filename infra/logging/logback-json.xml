@@ -1,9 +1,9 @@
 <configuration>
     <appender name="JSON_STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdcKeyName>orderId</includeMdcKeyName>
             <includeMdcKeyName>traceId</includeMdcKeyName>
             <includeMdcKeyName>spanId</includeMdcKeyName>
-            <includeMdcKeyName>service</includeMdcKeyName>
         </encoder>
     </appender>
 

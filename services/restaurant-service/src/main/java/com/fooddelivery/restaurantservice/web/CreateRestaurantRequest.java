@@ -5,6 +5,4 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 
 public record CreateRestaurantRequest(
-        @NotBlank String name,
-        @Min(1) @Max(120) int avgPrepTimeMinutes
-) {}
+    @NotBlank String name, @Min(1) @Max(120) int avgPrepTimeMinutes) {}

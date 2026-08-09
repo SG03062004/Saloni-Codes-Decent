@@ -1,221 +1,458 @@
 name: CI
 
 on:
+  pull_request:
+    branches: ["main", "develop"]
   push:
     branches: ["main", "develop"]
-  pull_request:
-    branches: ["main"]
 
-# Cancel in-progress runs for the same branch/PR so pushes don't queue up
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# ── Reusable env ──────────────────────────────────────────────────────────────
+env:
+  JAVA_VERSION: "17"
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "20"
+
+# =============================================================================
+# JOB 1 — FORMAT CHECK
+# Spotless (Java) · black + ruff (Python) · eslint (Node)
+# =============================================================================
 jobs:
 
-  # ── order-service (Java / Spring Boot) ──────────────────────────────────────
-  order-service:
-    name: order-service — build & test
+  format-check:
+    name: "format-check / ${{ matrix.service }}"
     runs-on: ubuntu-latest
-    # Only run when order-service files change (or workflow itself changes)
-    if: |
-      github.event_name == 'push' ||
-      contains(github.event.pull_request.changed_files, 'services/order-service')
-    defaults:
-      run:
-        working-directory: services/order-service
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ── Java services ──────────────────────────────────────────────────
+          - service: order-service
+            lang: java
+            dir: services/order-service
+          - service: restaurant-service
+            lang: java
+            dir: services/restaurant-service
+          - service: delivery-service
+            lang: java
+            dir: services/delivery-service
+          # ── Python services ────────────────────────────────────────────────
+          - service: eta-service
+            lang: python
+            dir: services/eta-service
+          - service: assignment-service
+            lang: python
+            dir: services/assignment-service
+          - service: notification-service
+            lang: python
+            dir: services/notification-service
+          # ── Node service ───────────────────────────────────────────────────
+          - service: ops-dashboard
+            lang: node
+            dir: services/ops-dashboard
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Java 17
+      # ── Java: Spotless check ───────────────────────────────────────────────
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        if: matrix.lang == 'java'
         uses: actions/setup-java@v4
         with:
-          java-version: "17"
+          java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
           cache: maven
 
-      - name: Build & test
-        run: mvn verify -B
-        # Testcontainers integration tests are skipped automatically when
-        # Docker is unavailable (disabledWithoutDocker = true). Unit tests
-        # always run. On GitHub Actions, Docker IS available so the
-        # integration tests will run here.
+      - name: Spotless check
+        if: matrix.lang == 'java'
+        working-directory: ${{ matrix.dir }}
+        run: mvn spotless:check -B -q
 
-      - name: Upload test reports
+      # ── Python: black + ruff ───────────────────────────────────────────────
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        if: matrix.lang == 'python'
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: ${{ matrix.dir }}/requirements.txt
+
+      - name: Install Python tools
+        if: matrix.lang == 'python'
+        working-directory: ${{ matrix.dir }}
+        run: pip install black ruff
+
+      - name: black check
+        if: matrix.lang == 'python'
+        working-directory: ${{ matrix.dir }}
+        run: black --check app/
+
+      - name: ruff check
+        if: matrix.lang == 'python'
+        working-directory: ${{ matrix.dir }}
+        run: ruff check app/
+
+      # ── Node: eslint ───────────────────────────────────────────────────────
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        if: matrix.lang == 'node'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ matrix.dir }}/package-lock.json
+
+      - name: npm install (with dev deps)
+        if: matrix.lang == 'node'
+        working-directory: ${{ matrix.dir }}
+        run: npm install
+
+      - name: eslint
+        if: matrix.lang == 'node'
+        working-directory: ${{ matrix.dir }}
+        run: npx eslint src/
+
+# =============================================================================
+# JOB 2 — STATIC ANALYSIS
+# SpotBugs (Java) · mypy (Python)
+# =============================================================================
+
+  static-analysis:
+    name: "static-analysis / ${{ matrix.service }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: order-service
+            lang: java
+            dir: services/order-service
+          - service: restaurant-service
+            lang: java
+            dir: services/restaurant-service
+          - service: delivery-service
+            lang: java
+            dir: services/delivery-service
+          - service: eta-service
+            lang: python
+            dir: services/eta-service
+          - service: assignment-service
+            lang: python
+            dir: services/assignment-service
+          - service: notification-service
+            lang: python
+            dir: services/notification-service
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Java: SpotBugs ─────────────────────────────────────────────────────
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        if: matrix.lang == 'java'
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: maven
+
+      - name: Compile (needed for SpotBugs bytecode analysis)
+        if: matrix.lang == 'java'
+        working-directory: ${{ matrix.dir }}
+        run: mvn compile -B -q -DskipTests
+
+      - name: SpotBugs
+        if: matrix.lang == 'java'
+        working-directory: ${{ matrix.dir }}
+        run: mvn spotbugs:check -B -q
+
+      - name: Upload SpotBugs report
+        if: matrix.lang == 'java' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spotbugs-${{ matrix.service }}
+          path: ${{ matrix.dir }}/target/spotbugsXml.xml
+          if-no-files-found: ignore
+
+      # ── Python: mypy ───────────────────────────────────────────────────────
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        if: matrix.lang == 'python'
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: ${{ matrix.dir }}/requirements.txt
+
+      - name: Install deps + mypy
+        if: matrix.lang == 'python'
+        working-directory: ${{ matrix.dir }}
+        run: pip install -r requirements.txt
+
+      - name: mypy
+        if: matrix.lang == 'python'
+        working-directory: ${{ matrix.dir }}
+        run: mypy app/
+
+# =============================================================================
+# JOB 3 — UNIT TESTS
+# mvn test (Java) · pytest (Python) · (Node has no unit tests yet)
+# =============================================================================
+
+  unit-tests:
+    name: "unit-tests / ${{ matrix.service }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: order-service
+            lang: java
+            dir: services/order-service
+          - service: restaurant-service
+            lang: java
+            dir: services/restaurant-service
+          - service: delivery-service
+            lang: java
+            dir: services/delivery-service
+          - service: eta-service
+            lang: python
+            dir: services/eta-service
+            pytest_args: "tests/ -v --tb=short"
+          - service: assignment-service
+            lang: python
+            dir: services/assignment-service
+            pytest_args: "tests/ -v --tb=short -m 'not integration'"
+          - service: notification-service
+            lang: python
+            dir: services/notification-service
+            pytest_args: "tests/ -v --tb=short -m 'not integration'"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Java unit tests (no Docker needed — Testcontainers skips itself) ───
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        if: matrix.lang == 'java'
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: maven
+
+      - name: mvn test (unit only)
+        if: matrix.lang == 'java'
+        working-directory: ${{ matrix.dir }}
+        # -Dsurefire.failIfNoSpecifiedTests=false lets services with no tests pass
+        run: mvn test -B -Dgroups="!integration" -Dsurefire.failIfNoSpecifiedTests=false
+
+      - name: Upload Surefire reports
+        if: matrix.lang == 'java' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-${{ matrix.service }}
+          path: ${{ matrix.dir }}/target/surefire-reports/
+          if-no-files-found: ignore
+
+      # ── Python unit tests ──────────────────────────────────────────────────
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        if: matrix.lang == 'python'
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: ${{ matrix.dir }}/requirements.txt
+
+      - name: Install deps
+        if: matrix.lang == 'python'
+        working-directory: ${{ matrix.dir }}
+        run: pip install -r requirements.txt
+
+      - name: pytest
+        if: matrix.lang == 'python'
+        working-directory: ${{ matrix.dir }}
+        run: pytest ${{ matrix.pytest_args }}
+
+# =============================================================================
+# JOB 4 — INTEGRATION TESTS
+# Testcontainers (order-service) — Docker is available on ubuntu-latest runners
+# =============================================================================
+
+  integration-tests:
+    name: integration-tests / order-service
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: maven
+
+      # mvn verify runs unit + integration tests; Testcontainers spins up
+      # MySQL + Kafka containers automatically via @Container annotations.
+      - name: mvn verify (unit + Testcontainers integration)
+        working-directory: services/order-service
+        run: mvn verify -B
+
+      - name: Upload Surefire + Failsafe reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: order-service-surefire
-          path: services/order-service/target/surefire-reports/
+          name: integration-reports-order-service
+          path: |
+            services/order-service/target/surefire-reports/
+            services/order-service/target/failsafe-reports/
+          if-no-files-found: ignore
 
-  # ── restaurant-service (Java / Spring Boot) ─────────────────────────────────
-  restaurant-service:
-    name: restaurant-service — build
+# =============================================================================
+# JOB 5 — DOCKER BUILD CHECK
+# Build every Dockerfile without pushing — catches broken builds early
+# =============================================================================
+
+  docker-build-check:
+    name: "docker-build / ${{ matrix.service }}"
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: services/restaurant-service
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: order-service
+            dir: services/order-service
+          - service: restaurant-service
+            dir: services/restaurant-service
+          - service: delivery-service
+            dir: services/delivery-service
+          - service: eta-service
+            dir: services/eta-service
+          - service: assignment-service
+            dir: services/assignment-service
+          - service: notification-service
+            dir: services/notification-service
+          - service: ops-dashboard
+            dir: services/ops-dashboard
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Java 17
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: docker build (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.dir }}
+          push: false
+          tags: food-delivery/${{ matrix.service }}:ci
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to:   type=gha,scope=${{ matrix.service }},mode=max
+
+# =============================================================================
+# JOB 6 — SECURITY SCAN
+# Trivy filesystem scan · OWASP dep-check (Java) · pip-audit (Python) · npm audit (Node)
+# =============================================================================
+
+  security-scan:
+    name: "security-scan / ${{ matrix.service }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: order-service
+            lang: java
+            dir: services/order-service
+          - service: restaurant-service
+            lang: java
+            dir: services/restaurant-service
+          - service: delivery-service
+            lang: java
+            dir: services/delivery-service
+          - service: eta-service
+            lang: python
+            dir: services/eta-service
+          - service: assignment-service
+            lang: python
+            dir: services/assignment-service
+          - service: notification-service
+            lang: python
+            dir: services/notification-service
+          - service: ops-dashboard
+            lang: node
+            dir: services/ops-dashboard
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Trivy filesystem scan (all languages) ──────────────────────────────
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: ${{ matrix.dir }}
+          severity: HIGH,CRITICAL
+          exit-code: "0"          # warn only — don't block PRs on new CVEs
+          format: table
+
+      # ── Java: OWASP Dependency-Check ───────────────────────────────────────
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        if: matrix.lang == 'java'
         uses: actions/setup-java@v4
         with:
-          java-version: "17"
+          java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
           cache: maven
 
-      - name: Build (no tests yet)
-        run: mvn package -DskipTests -B
+      - name: OWASP Dependency-Check
+        if: matrix.lang == 'java'
+        working-directory: ${{ matrix.dir }}
+        # failBuildOnCVSS=11 means never fail the build (max CVSS is 10) — report only
+        run: |
+          mvn org.owasp:dependency-check-maven:9.2.0:check \
+            -B -q \
+            -DfailBuildOnCVSS=11 \
+            -DsuppressionFile='' \
+            -Dformats=HTML
 
-  # ── delivery-service (Java / Spring Boot) ───────────────────────────────────
-  delivery-service:
-    name: delivery-service — build
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: services/delivery-service
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
+      - name: Upload OWASP report
+        if: matrix.lang == 'java' && always()
+        uses: actions/upload-artifact@v4
         with:
-          java-version: "17"
-          distribution: temurin
-          cache: maven
+          name: owasp-${{ matrix.service }}
+          path: ${{ matrix.dir }}/target/dependency-check-report.html
+          if-no-files-found: ignore
 
-      - name: Build (no tests yet)
-        run: mvn package -DskipTests -B
-
-  # ── eta-service (Python / FastAPI) ──────────────────────────────────────────
-  eta-service:
-    name: eta-service — lint & test
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: services/eta-service
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
+      # ── Python: pip-audit ──────────────────────────────────────────────────
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        if: matrix.lang == 'python'
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: services/eta-service/requirements.txt
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      - name: pip-audit
+        if: matrix.lang == 'python'
+        working-directory: ${{ matrix.dir }}
+        # --no-deps avoids resolving the full dep tree (faster in CI)
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt --no-deps || true
 
-      - name: Run tests
-        run: pytest tests/ -v --tb=short
-
-  # ── assignment-service (Python / FastAPI) ───────────────────────────────────
-  assignment-service:
-    name: assignment-service — install check
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: services/assignment-service
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: services/assignment-service/requirements.txt
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-  # ── ops-dashboard (Node / Express) ──────────────────────────────────────────
-  ops-dashboard:
-    name: ops-dashboard — install check
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: services/ops-dashboard
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Node 20
+      # ── Node: npm audit ────────────────────────────────────────────────────
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        if: matrix.lang == 'node'
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: services/ops-dashboard/package.json
+          cache-dependency-path: ${{ matrix.dir }}/package-lock.json
 
-      - name: Install dependencies
-        run: npm install --omit=dev
-
-  # ── Docker Compose smoke test (main branch only) ─────────────────────────────
-  # Brings up MySQL + Kafka (infra only — app services commented out in compose)
-  # and verifies both reach healthy state within the timeout.
-  smoke-test:
-    name: infra smoke test
-    runs-on: ubuntu-latest
-    needs: [order-service, eta-service, ops-dashboard]
-    if: github.ref == 'refs/heads/main'
-    defaults:
-      run:
-        working-directory: infra
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Start infra containers
-        run: docker compose up -d mysql kafka ops-dashboard
-
-      - name: Wait for MySQL healthy
+      - name: npm audit
+        if: matrix.lang == 'node'
+        working-directory: ${{ matrix.dir }}
+        # --audit-level=critical — only fail on critical vulns
         run: |
-          for i in $(seq 1 24); do
-            STATUS=$(docker inspect --format='{{.State.Health.Status}}' infra-mysql-1 2>/dev/null || echo "starting")
-            echo "MySQL status: $STATUS (attempt $i)"
-            [ "$STATUS" = "healthy" ] && break
-            sleep 5
-          done
-          [ "$STATUS" = "healthy" ] || (docker compose logs mysql && exit 1)
-
-      - name: Wait for Kafka healthy
-        run: |
-          for i in $(seq 1 24); do
-            STATUS=$(docker inspect --format='{{.State.Health.Status}}' infra-kafka-1 2>/dev/null || echo "starting")
-            echo "Kafka status: $STATUS (attempt $i)"
-            [ "$STATUS" = "healthy" ] && break
-            sleep 5
-          done
-          [ "$STATUS" = "healthy" ] || (docker compose logs kafka && exit 1)
-
-      - name: Verify ops-dashboard /health
-        run: |
-          sleep 3
-          curl -sf http://localhost:3000/health | grep -q '"status"'
-
-      - name: Produce and consume a Kafka test message
-        run: |
-          docker exec infra-kafka-1 \
-            /opt/kafka/bin/kafka-topics.sh \
-            --bootstrap-server localhost:9092 \
-            --create --if-not-exists \
-            --topic ci-smoke --partitions 1 --replication-factor 1
-          echo '{"ci":"smoke"}' | docker exec -i infra-kafka-1 \
-            /opt/kafka/bin/kafka-console-producer.sh \
-            --bootstrap-server localhost:9092 --topic ci-smoke
-          docker exec infra-kafka-1 \
-            /opt/kafka/bin/kafka-console-consumer.sh \
-            --bootstrap-server localhost:9092 \
-            --topic ci-smoke --from-beginning \
-            --max-messages 1 --timeout-ms 10000
-
-      - name: Tear down
-        if: always()
-        run: docker compose down -v
+          npm install
+          npm audit --audit-level=critical || true

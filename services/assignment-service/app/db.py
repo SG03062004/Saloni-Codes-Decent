@@ -1,6 +1,7 @@
 from __future__ import annotations
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.models import DriverCandidate, Settings
 
@@ -26,15 +27,22 @@ async def upsert_driver_location(
     is_available: bool,
 ) -> None:
     await session.execute(
-        text("""
+        text(
+            """
             INSERT INTO driver_locations (driver_id, location, is_available)
             VALUES (:driver_id, ST_SRID(POINT(:lng, :lat), 4326), :is_available)
             ON DUPLICATE KEY UPDATE
                 location     = ST_SRID(POINT(:lng, :lat), 4326),
                 is_available = :is_available,
                 updated_at   = CURRENT_TIMESTAMP
-        """),
-        {"driver_id": driver_id, "lat": lat, "lng": lng, "is_available": int(is_available)},
+        """
+        ),
+        {
+            "driver_id": driver_id,
+            "lat": lat,
+            "lng": lng,
+            "is_available": int(is_available),
+        },
     )
     await session.commit()
 
@@ -51,7 +59,8 @@ async def find_nearest_drivers(
     At ride-share scale, replace with a geo cache (see ADR-001).
     """
     rows = await session.execute(
-        text("""
+        text(
+            """
             SELECT driver_id,
                    ST_Y(location) AS lat,
                    ST_X(location) AS lng,
@@ -60,10 +69,13 @@ async def find_nearest_drivers(
             WHERE is_available = 1
             ORDER BY distance_m ASC
             LIMIT :lim
-        """),
+        """
+        ),
         {"order_lat": order_lat, "order_lng": order_lng, "lim": limit},
     )
     return [
-        DriverCandidate(driver_id=r.driver_id, lat=r.lat, lng=r.lng, distance_m=r.distance_m)
+        DriverCandidate(
+            driver_id=r.driver_id, lat=r.lat, lng=r.lng, distance_m=r.distance_m
+        )
         for r in rows.mappings()
     ]

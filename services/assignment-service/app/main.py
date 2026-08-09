@@ -1,11 +1,11 @@
 from __future__ import annotations
+
 import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
 
-from app.db import init_db, get_session_factory, upsert_driver_location
+from app.db import get_session_factory, init_db, upsert_driver_location
 from app.kafka_consumer import consume_loop
 from app.kafka_producer import start_producer, stop_producer
 from app.logging_config import get_logger
@@ -41,4 +41,6 @@ async def update_driver_location(driver_id: str, body: LocationUpdate):
     if session_factory is None:
         raise HTTPException(status_code=503, detail="db_not_ready")
     async with session_factory() as session:
-        await upsert_driver_location(session, driver_id, body.lat, body.lng, body.is_available)
+        await upsert_driver_location(
+            session, driver_id, body.lat, body.lng, body.is_available
+        )

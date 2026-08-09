@@ -1,9 +1,10 @@
 from __future__ import annotations
+
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
-
 # ── Settings ─────────────────────────────────────────────────────────────────
+
 
 class Settings(BaseSettings):
     db_url: str = "mysql+aiomysql://root:root@localhost:3306/assignment_db"
@@ -19,6 +20,7 @@ class Settings(BaseSettings):
 
 # ── HTTP request/response ─────────────────────────────────────────────────────
 
+
 class LocationUpdate(BaseModel):
     lat: float = Field(..., ge=-90, le=90)
     lng: float = Field(..., ge=-180, le=180)
@@ -30,6 +32,7 @@ class HealthResponse(BaseModel):
 
 
 # ── Kafka event shapes ────────────────────────────────────────────────────────
+
 
 class GeoPoint(BaseModel):
     lat: float
@@ -48,7 +51,7 @@ class OrderCreatedPayload(BaseModel):
     customerId: str
     restaurantId: str
     deliveryAddress: DeliveryAddress
-    prepTimeMinutes: int = 15          # default if not in event
+    prepTimeMinutes: int = 15  # default if not in event
 
 
 class OrderCreatedEvent(BaseModel):
@@ -77,6 +80,7 @@ class DriverAssignedEvent(BaseModel):
 
 
 # ── Internal ──────────────────────────────────────────────────────────────────
+
 
 class DriverCandidate(BaseModel):
     driver_id: str

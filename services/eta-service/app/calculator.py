@@ -11,10 +11,10 @@ Formula (all weights tunable):
 """
 
 # ── Tunable constants ────────────────────────────────────────────────────────
-AVG_SPEED_KMH       = 30.0   # average urban delivery speed
-TRAFFIC_WEIGHT      = 0.6    # how much traffic_factor inflates drive time
-AVAILABILITY_PENALTY = 0.3   # extra wait when drivers are scarce
-MIN_ETA             = 5      # floor — never return less than 5 minutes
+AVG_SPEED_KMH = 30.0  # average urban delivery speed
+TRAFFIC_WEIGHT = 0.6  # how much traffic_factor inflates drive time
+AVAILABILITY_PENALTY = 0.3  # extra wait when drivers are scarce
+MIN_ETA = 5  # floor — never return less than 5 minutes
 
 
 def predict_eta(

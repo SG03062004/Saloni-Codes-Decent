@@ -23,7 +23,7 @@ def snapshot() -> dict:
         avg = _latency_sum_ms / _requests_total if _requests_total else 0.0
         return {
             "requests_total": _requests_total,
-            "errors_total":   _errors_total,
+            "errors_total": _errors_total,
             "avg_latency_ms": round(avg, 2),
             "uptime_seconds": round(time.monotonic() - _start_time, 1),
         }

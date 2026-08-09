@@ -1,0 +1,6 @@
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+# BLE001: blind Exception catch — intentional in Kafka consumer loops
+ignore = ["BLE001"]

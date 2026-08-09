@@ -9,25 +9,25 @@ import org.springframework.stereotype.Component;
 @Component
 public class DeliveryKafkaProducer {
 
-    private static final Logger log = LoggerFactory.getLogger(DeliveryKafkaProducer.class);
-    private static final String TOPIC = "order-delivered";
+  private static final Logger log = LoggerFactory.getLogger(DeliveryKafkaProducer.class);
+  private static final String TOPIC = "order-delivered";
 
-    private final KafkaTemplate<String, String> kafka;
-    private final ObjectMapper mapper;
+  private final KafkaTemplate<String, String> kafka;
+  private final ObjectMapper mapper;
 
-    public DeliveryKafkaProducer(KafkaTemplate<String, String> kafka, ObjectMapper mapper) {
-        this.kafka  = kafka;
-        this.mapper = mapper;
+  public DeliveryKafkaProducer(KafkaTemplate<String, String> kafka, ObjectMapper mapper) {
+    this.kafka = kafka;
+    this.mapper = mapper;
+  }
+
+  public void publishOrderDelivered(OrderDeliveredEvent event) {
+    try {
+      String json = mapper.writeValueAsString(event);
+      kafka.send(TOPIC, event.payload.orderId, json);
+      log.info("published order-delivered orderId={}", event.payload.orderId);
+    } catch (Exception e) {
+      log.error("failed to publish order-delivered orderId={}", event.payload.orderId, e);
+      throw new RuntimeException(e);
     }
-
-    public void publishOrderDelivered(OrderDeliveredEvent event) {
-        try {
-            String json = mapper.writeValueAsString(event);
-            kafka.send(TOPIC, event.payload.orderId, json);
-            log.info("published order-delivered orderId={}", event.payload.orderId);
-        } catch (Exception e) {
-            log.error("failed to publish order-delivered orderId={}", event.payload.orderId, e);
-            throw new RuntimeException(e);
-        }
-    }
+  }
 }

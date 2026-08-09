@@ -1,0 +1,152 @@
+# docker-compose.green.yml
+# Green app stack — shares the infra network (mysql, kafka) from docker-compose.yml.
+# Run with:  docker compose -p green -f docker-compose.green.yml up -d
+#
+# Host-exposed ports (19xxx range) are only used by the deploy script for
+# direct health-check validation before cutover.  All production traffic
+# flows through the nginx proxy on the standard ports.
+
+networks:
+  delivery-net:
+    external: true
+    name: infra_delivery-net
+
+services:
+
+  order-service:
+    build: ../../services/order-service
+    networks: [delivery-net]
+    ports: ["19082:8082"]
+    depends_on: { mysql: { condition: service_healthy }, kafka: { condition: service_healthy } }
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/order_db
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      RESTAURANT_SERVICE_URL: http://restaurant-service:8081
+      DELIVERY_SERVICE_URL:   http://delivery-service:8083
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 45s
+
+  restaurant-service:
+    build: ../../services/restaurant-service
+    networks: [delivery-net]
+    ports: ["19081:8081"]
+    depends_on: { mysql: { condition: service_healthy }, kafka: { condition: service_healthy } }
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/restaurant_db
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 45s
+
+  delivery-service:
+    build: ../../services/delivery-service
+    networks: [delivery-net]
+    ports: ["19083:8083"]
+    depends_on: { mysql: { condition: service_healthy }, kafka: { condition: service_healthy } }
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/delivery_db
+      DB_USER: root
+      DB_PASS: root
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8083/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 45s
+
+  eta-service:
+    build: ../../services/eta-service
+    networks: [delivery-net]
+    ports: ["19084:8084"]
+    depends_on: { kafka: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8084/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  assignment-service:
+    build: ../../services/assignment-service
+    networks: [delivery-net]
+    ports: ["19085:8085"]
+    depends_on: { mysql: { condition: service_healthy }, kafka: { condition: service_healthy } }
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      DB_URL: mysql+aiomysql://root:root@mysql:3306/assignment_db
+      ETA_SERVICE_URL: http://eta-service:8084
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8085/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  notification-service:
+    build: ../../services/notification-service
+    networks: [delivery-net]
+    ports: ["19086:8086"]
+    depends_on: { mysql: { condition: service_healthy }, kafka: { condition: service_healthy } }
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      DB_URL: mysql+aiomysql://root:root@mysql:3306/notification_db
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8086/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  ops-dashboard:
+    build: ../../services/ops-dashboard
+    networks: [delivery-net]
+    ports: ["19000:3000"]
+    depends_on: { mysql: { condition: service_healthy } }
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASS: root
+      DB_NAME: ops_db
+      POLL_INTERVAL_MS: 10000
+      SERVICE_URLS: >-
+        restaurant-service=http://restaurant-service:8081/actuator/health,
+        order-service=http://order-service:8082/actuator/health,
+        delivery-service=http://delivery-service:8083/actuator/health,
+        eta-service=http://eta-service:8084/health,
+        assignment-service=http://assignment-service:8085/health
+      METRICS_URLS: >-
+        restaurant-service=http://restaurant-service:8081/actuator/metrics/http.server.requests,
+        order-service=http://order-service:8082/actuator/metrics/http.server.requests,
+        delivery-service=http://delivery-service:8083/actuator/metrics/http.server.requests,
+        eta-service=http://eta-service:8084/metrics-lite,
+        assignment-service=http://assignment-service:8085/metrics-lite
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+
+# Reference the external infra services for depends_on resolution
+  mysql:
+    image: mysql:8.0
+    networks: [delivery-net]
+    external: true
+
+  kafka:
+    image: apache/kafka:3.7.0
+    networks: [delivery-net]
+    external: true

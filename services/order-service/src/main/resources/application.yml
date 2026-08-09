@@ -21,7 +21,8 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
-    baseline-on-migrate: false
+    baseline-on-migrate: true
+    baseline-version: 0
 
   kafka:
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
@@ -55,3 +56,25 @@ kafka:
     order-created: order-created
     order-accepted: order-accepted
     driver-assigned: driver-assigned
+
+clients:
+  restaurant-service: ${RESTAURANT_SERVICE_URL:http://localhost:8081}
+  delivery-service:   ${DELIVERY_SERVICE_URL:http://localhost:8083}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      restaurant:
+        slidingWindowSize: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+      delivery:
+        slidingWindowSize: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+  timelimiter:
+    instances:
+      restaurant:
+        timeoutDuration: 2s
+      delivery:
+        timeoutDuration: 2s

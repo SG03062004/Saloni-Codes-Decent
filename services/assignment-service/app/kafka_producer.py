@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import json
+
 from aiokafka import AIOKafkaProducer
 
 _producer: AIOKafkaProducer | None = None

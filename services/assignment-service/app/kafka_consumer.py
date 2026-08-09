@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import asyncio
 import json
 import uuid
@@ -20,13 +21,17 @@ TOPIC_DRIVER_ASSIGNED = "driver-assigned"
 TOPIC_DLQ = "driver-assignment-dlq"
 
 
-async def _handle_order(event: OrderCreatedEvent, settings: Settings, http_client: httpx.AsyncClient) -> None:
+async def _handle_order(
+    event: OrderCreatedEvent, settings: Settings, http_client: httpx.AsyncClient
+) -> None:
     p = event.payload
     log_ctx = {"orderId": p.orderId, "service": "assignment-service"}
 
     session_factory = get_session_factory()
     async with session_factory() as session:
-        candidates = await find_nearest_drivers(session, p.deliveryAddress.lat, p.deliveryAddress.lng)
+        candidates = await find_nearest_drivers(
+            session, p.deliveryAddress.lat, p.deliveryAddress.lng
+        )
 
     if not candidates:
         raise RuntimeError("no_drivers_available")
@@ -42,7 +47,10 @@ async def _handle_order(event: OrderCreatedEvent, settings: Settings, http_clien
         raise RuntimeError("no_drivers_scored")
 
     best, eta = result
-    log.info("driver_selected", extra={**log_ctx, "driverId": best.driver_id, "etaMinutes": eta})
+    log.info(
+        "driver_selected",
+        extra={**log_ctx, "driverId": best.driver_id, "etaMinutes": eta},
+    )
 
     await publish(
         TOPIC_DRIVER_ASSIGNED,
@@ -56,8 +64,14 @@ async def _handle_order(event: OrderCreatedEvent, settings: Settings, http_clien
                 "driverId": best.driver_id,
                 "etaMinutes": eta,
                 "driverLocation": {"lat": best.lat, "lng": best.lng},
-                "restaurantLocation": {"lat": p.deliveryAddress.lat, "lng": p.deliveryAddress.lng},
-                "deliveryLocation": {"lat": p.deliveryAddress.lat, "lng": p.deliveryAddress.lng},
+                "restaurantLocation": {
+                    "lat": p.deliveryAddress.lat,
+                    "lng": p.deliveryAddress.lng,
+                },
+                "deliveryLocation": {
+                    "lat": p.deliveryAddress.lat,
+                    "lng": p.deliveryAddress.lng,
+                },
             },
         },
         key=p.orderId,

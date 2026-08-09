@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 
@@ -13,6 +14,7 @@ class Settings(BaseSettings):
 
 
 # ── Kafka event shapes ────────────────────────────────────────────────────────
+
 
 class OrderCreatedPayload(BaseModel):
     orderId: str

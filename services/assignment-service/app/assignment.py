@@ -1,9 +1,9 @@
 from __future__ import annotations
+
 import httpx
 
-from app.models import DriverCandidate, Settings
 from app.eta_client import get_eta
-
+from app.models import DriverCandidate, Settings
 
 # Weight for combining distance and ETA into a single score (tunable).
 # Lower score = better candidate.
@@ -30,7 +30,9 @@ async def pick_best_driver(
 
     for candidate in candidates:
         try:
-            eta = await get_eta(http_client, settings, candidate, prep_time_minutes, order_id=order_id)
+            eta = await get_eta(
+                http_client, settings, candidate, prep_time_minutes, order_id=order_id
+            )
         except Exception:
             continue  # skip unreachable ETA service for this candidate
 

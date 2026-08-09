@@ -1,0 +1,37 @@
+# docker-compose.proxy.yml
+# Nginx reverse proxy — the single external entry point for all services.
+# Start once:  docker compose -p proxy -f docker-compose.proxy.yml up -d
+#
+# The active upstream set is controlled by the symlink:
+#   ./conf.d/active-upstreams.conf -> ../upstreams-blue.conf | ../upstreams-green.conf
+# The deploy.sh script updates this symlink and sends nginx -s reload.
+
+networks:
+  delivery-net:
+    external: true
+    name: infra_delivery-net
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: bg-proxy
+    networks: [delivery-net]
+    ports:
+      - "8081:8081"   # restaurant-service
+      - "8082:8082"   # order-service
+      - "8083:8083"   # delivery-service
+      - "8084:8084"   # eta-service
+      - "8085:8085"   # assignment-service
+      - "8086:8086"   # notification-service
+      - "3000:3000"   # ops-dashboard
+    volumes:
+      # Main nginx config
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      # conf.d contains the active-upstreams.conf symlink (managed by deploy.sh)
+      - ./conf.d:/etc/nginx/conf.d:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 10s
+      timeout: 5s
+      retries: 3

@@ -1,0 +1,107 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+# Only one release can run at a time
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  # e.g. ghcr.io/your-org/food-delivery-platform
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/food-delivery-platform
+
+jobs:
+
+  build-and-push:
+    name: "build & push / ${{ matrix.service }}"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write   # needed to push to GHCR
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: order-service
+            dir: services/order-service
+          - service: restaurant-service
+            dir: services/restaurant-service
+          - service: delivery-service
+            dir: services/delivery-service
+          - service: eta-service
+            dir: services/eta-service
+          - service: assignment-service
+            dir: services/assignment-service
+          - service: notification-service
+            dir: services/notification-service
+          - service: ops-dashboard
+            dir: services/ops-dashboard
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Derive image tags: vX.Y.Z + latest
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.dir }}
+          push: true
+          tags:    ${{ steps.meta.outputs.tags }}
+          labels:  ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to:   type=gha,scope=${{ matrix.service }},mode=max
+
+  # ── Post-release: create a GitHub Release with image digest summary ─────────
+  github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body: |
+            ## Docker images
+
+            All images pushed to `ghcr.io/${{ github.repository_owner }}/food-delivery-platform/<service>:${{ github.ref_name }}`
+
+            | Service | Image |
+            |---|---|
+            | order-service | `${{ env.IMAGE_PREFIX }}/order-service:${{ github.ref_name }}` |
+            | restaurant-service | `${{ env.IMAGE_PREFIX }}/restaurant-service:${{ github.ref_name }}` |
+            | delivery-service | `${{ env.IMAGE_PREFIX }}/delivery-service:${{ github.ref_name }}` |
+            | eta-service | `${{ env.IMAGE_PREFIX }}/eta-service:${{ github.ref_name }}` |
+            | assignment-service | `${{ env.IMAGE_PREFIX }}/assignment-service:${{ github.ref_name }}` |
+            | notification-service | `${{ env.IMAGE_PREFIX }}/notification-service:${{ github.ref_name }}` |
+            | ops-dashboard | `${{ env.IMAGE_PREFIX }}/ops-dashboard:${{ github.ref_name }}` |
