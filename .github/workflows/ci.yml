@@ -72,28 +72,28 @@ jobs:
         run: mvn spotless:check -B -q
 
       # ── Python: black + ruff ───────────────────────────────────────────────
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
-        if: matrix.lang == 'python'
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-          cache-dependency-path: ${{ matrix.dir }}/requirements.txt
+      
 
-      - name: Install Python tools
+      - name: Build Python Docker image
         if: matrix.lang == 'python'
         working-directory: ${{ matrix.dir }}
-        run: pip install black ruff
+        run: docker build -t ${{ matrix.service }}:format .
 
-      - name: black check
+      - name: Black check
         if: matrix.lang == 'python'
         working-directory: ${{ matrix.dir }}
-        run: black --check app/
+        run: |
+          docker run --rm \
+            ${{ matrix.service }}:format \
+            black --check app/
 
-      - name: ruff check
+      - name: Ruff check
         if: matrix.lang == 'python'
         working-directory: ${{ matrix.dir }}
-        run: ruff check app/
+        run: |
+          docker run --rm \
+            ${{ matrix.service }}:format \
+            ruff check app/
 
       # ── Node: eslint ───────────────────────────────────────────────────────
       - name: Set up Node ${{ env.NODE_VERSION }}
