@@ -222,7 +222,7 @@ jobs:
           - service: assignment-service
             lang: python
             dir: services/assignment-service
-            pytest_args: "tests/ -v --tb=short -m 'not integration'"
+            pytest_args: "tests/ -v --tb=short --ignore=tests/test_integration.py"
           - service: notification-service
             lang: python
             dir: services/notification-service
