@@ -412,19 +412,19 @@ jobs:
           exit-code: "0"
           format: table
 
-  # ── Java: OWASP Dependency-Check ───────────────────────────────────────
+      # ── Java: OWASP Dependency-Check ───────────────────────────────────────
       - name: OWASP Dependency-Check
-          if: matrix.lang == 'java'
-          working-directory: ${{ matrix.dir }}
-          env:
-            NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
-          run: |
-            mvn org.owasp:dependency-check-maven:9.2.0:check \
-              -B -q \
-              -DnvdApiKey="$NVD_API_KEY" \
-              -DfailBuildOnCVSS=11 \
-              -DsuppressionFile='' \
-              -Dformats=HTML
+        if: matrix.lang == 'java'
+        working-directory: ${{ matrix.dir }}
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: |
+          mvn org.owasp:dependency-check-maven:9.2.0:check \
+            -B -q \
+            -DnvdApiKey="$NVD_API_KEY" \
+            -DfailBuildOnCVSS=11 \
+            -DsuppressionFile='' \
+            -Dformats=HTML
       
 
       - name: Upload OWASP report
