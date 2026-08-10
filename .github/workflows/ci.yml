@@ -387,17 +387,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # ── Trivy filesystem scan (all languages) ──────────────────────────────
-      - name: Trivy filesystem scan
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: fs
-          scan-ref: ${{ matrix.dir }}
-          severity: HIGH,CRITICAL
-          exit-code: "0"          # warn only — don't block PRs on new CVEs
-          format: table
-
-      # ── Java: OWASP Dependency-Check ───────────────────────────────────────
+      # ── Java setup + Maven cache ───────────────────────────────────────────
       - name: Set up Java ${{ env.JAVA_VERSION }}
         if: matrix.lang == 'java'
         uses: actions/setup-java@v4
@@ -405,6 +395,33 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
           cache: maven
+
+  # ── Pre-resolve Maven dependencies for Trivy ───────────────────────────
+      - name: Resolve Maven dependencies
+        if: matrix.lang == 'java'
+        working-directory: ${{ matrix.dir }}
+        run: mvn dependency:resolve -B -q
+
+  # ── Trivy filesystem scan ──────────────────────────────────────────────
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: ${{ matrix.dir }}
+          severity: HIGH,CRITICAL
+          exit-code: "0"
+          format: table
+
+  # ── Java: OWASP Dependency-Check ───────────────────────────────────────
+      - name: OWASP Dependency-Check
+        if: matrix.lang == 'java'
+        working-directory: ${{ matrix.dir }}
+        run: |
+          mvn org.owasp:dependency-check-maven:9.2.0:check \
+          -B -q \
+          -DfailBuildOnCVSS=11 \
+          -DsuppressionFile='' \
+          -Dformats=HTML
 
       - name: OWASP Dependency-Check
         if: matrix.lang == 'java'
