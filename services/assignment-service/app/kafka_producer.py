@@ -9,18 +9,32 @@ _producer: AIOKafkaProducer | None = None
 
 async def start_producer(bootstrap_servers: str) -> None:
     global _producer
+
     _producer = AIOKafkaProducer(
         bootstrap_servers=bootstrap_servers,
         value_serializer=lambda v: json.dumps(v).encode(),
     )
+
     await _producer.start()
 
 
 async def stop_producer() -> None:
-    if _producer:
+    if _producer is not None:
         await _producer.stop()
 
 
-async def publish(topic: str, payload: dict, key: str | None = None) -> None:
+async def publish(
+    topic: str,
+    payload: dict,
+    key: str | None = None,
+) -> None:
+    if _producer is None:
+        raise RuntimeError("Kafka producer has not been started")
+
     key_bytes = key.encode() if key else None
-    await _producer.send_and_wait(topic, value=payload, key=key_bytes)
+
+    await _producer.send_and_wait(
+        topic,
+        value=payload,
+        key=key_bytes,
+    )
