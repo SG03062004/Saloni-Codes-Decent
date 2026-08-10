@@ -414,25 +414,19 @@ jobs:
 
   # ── Java: OWASP Dependency-Check ───────────────────────────────────────
       - name: OWASP Dependency-Check
-        if: matrix.lang == 'java'
-        working-directory: ${{ matrix.dir }}
-        run: |
-          mvn org.owasp:dependency-check-maven:9.2.0:check \
-          -B -q \
-          -DfailBuildOnCVSS=11 \
-          -DsuppressionFile='' \
-          -Dformats=HTML
+          if: matrix.lang == 'java'
+          working-directory: ${{ matrix.dir }}
+          env:
+            NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+          run: |
+            mvn org.owasp:dependency-check-maven:9.2.0:check \
+              -B -q \
+              -DnvdApiKey="$NVD_API_KEY" \
+              -DfailBuildOnCVSS=11 \
+              -DsuppressionFile='' \
+              -Dformats=HTML
 
-      - name: OWASP Dependency-Check
-        if: matrix.lang == 'java'
-        working-directory: ${{ matrix.dir }}
-        # failBuildOnCVSS=11 means never fail the build (max CVSS is 10) — report only
-        run: |
-          mvn org.owasp:dependency-check-maven:9.2.0:check \
-            -B -q \
-            -DfailBuildOnCVSS=11 \
-            -DsuppressionFile='' \
-            -Dformats=HTML
+      
 
       - name: Upload OWASP report
         if: matrix.lang == 'java' && always()
