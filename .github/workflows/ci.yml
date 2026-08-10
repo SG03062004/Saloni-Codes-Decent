@@ -74,26 +74,19 @@ jobs:
       # ── Python: black + ruff ───────────────────────────────────────────────
       
 
+            # ── Python: mypy ───────────────────────────────────────────────────────
       - name: Build Python Docker image
         if: matrix.lang == 'python'
         working-directory: ${{ matrix.dir }}
-        run: docker build -t ${{ matrix.service }}:format .
+        run: docker build -t ${{ matrix.service }}:static .
 
-      - name: Black check
+      - name: Mypy
         if: matrix.lang == 'python'
         working-directory: ${{ matrix.dir }}
         run: |
           docker run --rm \
-            ${{ matrix.service }}:format \
-            black --check app/
-
-      - name: Ruff check
-        if: matrix.lang == 'python'
-        working-directory: ${{ matrix.dir }}
-        run: |
-          docker run --rm \
-            ${{ matrix.service }}:format \
-            ruff check app/
+            ${{ matrix.service }}:static \
+            mypy app/
 
       # ── Node: eslint ───────────────────────────────────────────────────────
       - name: Set up Node ${{ env.NODE_VERSION }}
