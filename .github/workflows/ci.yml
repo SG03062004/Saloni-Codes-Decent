@@ -362,15 +362,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - service: order-service
-            lang: java
-            dir: services/order-service
-          - service: restaurant-service
-            lang: java
-            dir: services/restaurant-service
-          - service: delivery-service
-            lang: java
-            dir: services/delivery-service
           - service: eta-service
             lang: python
             dir: services/eta-service
