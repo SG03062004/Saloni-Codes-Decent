@@ -5,7 +5,7 @@ WORKDIR /app
 COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir black ruff mypy
+    && pip install --no-cache-dir black ruff mypy types-cachetools
 
 COPY app ./app
 COPY mypy.ini .
