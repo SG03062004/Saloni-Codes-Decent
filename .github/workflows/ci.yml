@@ -413,6 +413,7 @@ jobs:
           format: table
 
       # ── Java: OWASP Dependency-Check ───────────────────────────────────────
+      # ── Java: OWASP Dependency-Check ───────────────────────────────────────
       - name: OWASP Dependency-Check
         if: matrix.lang == 'java'
         working-directory: ${{ matrix.dir }}
@@ -421,7 +422,9 @@ jobs:
         run: |
           mvn org.owasp:dependency-check-maven:9.2.0:check \
             -B -q \
-            -DnvdApiKey="$NVD_API_KEY" \
+            -DnvdApiKeyEnvironmentVariable=NVD_API_KEY \
+            -DnvdApiDelay=6000 \
+            -DnvdMaxRetryCount=10 \
             -DfailBuildOnCVSS=11 \
             -DsuppressionFile='' \
             -Dformats=HTML
