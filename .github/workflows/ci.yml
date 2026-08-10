@@ -425,7 +425,6 @@ jobs:
               -DfailBuildOnCVSS=11 \
               -DsuppressionFile='' \
               -Dformats=HTML
-
       
 
       - name: Upload OWASP report
