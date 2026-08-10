@@ -14,14 +14,12 @@ async def get_eta(
     order_id: str | None = None,
 ) -> int:
     """Return estimatedDeliveryMinutes from the ETA service."""
-
-    payload: dict[str, float | int | str] = {
+    payload = {
         "distanceKm": round(candidate.distance_m / 1000, 3),
         "prepTimeMinutes": prep_time_minutes,
         "driverAvailability": 1.0,
         "trafficFactor": traffic_factor,
     }
-
     if order_id:
         payload["orderId"] = order_id
 
@@ -30,7 +28,5 @@ async def get_eta(
         json=payload,
         timeout=5.0,
     )
-
     r.raise_for_status()
-
     return r.json()["estimatedDeliveryMinutes"]
