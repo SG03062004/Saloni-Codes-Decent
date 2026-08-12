@@ -30,9 +30,9 @@ async def upsert_driver_location(
         text(
             """
             INSERT INTO driver_locations (driver_id, location, is_available)
-            VALUES (:driver_id, ST_SRID(POINT(:lng, :lat), 4326), :is_available)
+            VALUES (:driver_id, ST_SRID(POINT(:lat, :lng), 4326), :is_available)
             ON DUPLICATE KEY UPDATE
-                location     = ST_SRID(POINT(:lng, :lat), 4326),
+                location     = ST_SRID(POINT(:lat, :lng), 4326),
                 is_available = :is_available,
                 updated_at   = CURRENT_TIMESTAMP
         """
@@ -64,7 +64,7 @@ async def find_nearest_drivers(
             SELECT driver_id,
                    ST_Y(location) AS lat,
                    ST_X(location) AS lng,
-                   ST_Distance_Sphere(location, ST_SRID(POINT(:order_lng, :order_lat), 4326)) AS distance_m
+                   ST_Distance_Sphere(location, ST_SRID(POINT(:order_lat, :order_lng), 4326)) AS distance_m
             FROM driver_locations
             WHERE is_available = 1
             ORDER BY distance_m ASC

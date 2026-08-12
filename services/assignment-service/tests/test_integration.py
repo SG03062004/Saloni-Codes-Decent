@@ -99,6 +99,34 @@ async def test_unavailable_driver_excluded(mysql_container):
     await engine.dispose()
 
 
+@pytest.mark.asyncio
+async def test_driver_location_coordinate_order(mysql_container):
+    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+
+    url = mysql_container.get_connection_url().replace("mysql+pymysql", "mysql+aiomysql")
+    engine = create_async_engine(url)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+
+    driver_id = "driver-smoke-001"
+    lat = 12.9716
+    lng = 77.5946
+
+    async with factory() as session:
+        await upsert_driver_location(session, driver_id, lat=lat, lng=lng, is_available=True)
+
+    async with factory() as session:
+        row = (await session.execute(
+            text("SELECT ST_Y(location) AS latitude, ST_X(location) AS longitude FROM driver_locations WHERE driver_id = :driver_id"),
+            {"driver_id": driver_id}
+        )).fetchone()
+        
+        assert row is not None
+        assert abs(row.latitude - lat) < 1e-6
+        assert abs(row.longitude - lng) < 1e-6
+
+    await engine.dispose()
+
+
 # ── Kafka round-trip integration ──────────────────────────────────────────────
 
 @pytest.fixture(scope="module")
