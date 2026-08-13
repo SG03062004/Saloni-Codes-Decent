@@ -25,8 +25,7 @@ public class DeliveryController {
               response.put("orderId", d.getOrderId());
               response.put("driverId", d.getDriverId());
               response.put("status", d.getStatus().name());
-              response.put(
-                  "etaMinutes", d.getEtaMinutes() != null ? d.getEtaMinutes() : 0);
+              response.put("etaMinutes", d.getEtaMinutes() != null ? d.getEtaMinutes() : 0);
 
               if (d.getDeliveredAt() != null) {
                 response.put("deliveredAt", d.getDeliveredAt().toString());
@@ -42,15 +41,13 @@ public class DeliveryController {
   }
 
   /**
-   * Test-harness only: directly seed a delivery row in ASSIGNED state,
-   * bypassing the Kafka DriverAssignedEvent flow.
-   * Body: { "orderId": "...", "driverId": "..." }
+   * Test-harness only: directly seed a delivery row in ASSIGNED state, bypassing the Kafka
+   * DriverAssignedEvent flow. Body: { "orderId": "...", "driverId": "..." }
    */
   @PostMapping("/seed")
-  public ResponseEntity<Map<String, Object>> seed(
-      @RequestBody Map<String, String> body) {
+  public ResponseEntity<Map<String, Object>> seed(@RequestBody Map<String, String> body) {
 
-    String orderId  = body.get("orderId");
+    String orderId = body.get("orderId");
     String driverId = body.get("driverId");
 
     if (orderId == null || orderId.isBlank()) {
