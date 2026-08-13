@@ -15,18 +15,20 @@ async def get_eta(
     traffic_factor: float = 0.3,
     order_id: str | None = None,
 ) -> int:
-    """Return estimatedDeliveryMinutes from the ETA service."""
+    """Return estimated_delivery_minutes from the ETA service."""
 
     payload: dict[str, Any] = {
-        "distanceKm": round(candidate.distance_m / 1000, 3),
-        "prepTimeMinutes": prep_time_minutes,
-        "driverAvailability": 1.0,
-        "trafficFactor": traffic_factor,
+        "distance_km": round(candidate.distance_m / 1000, 3),
+        "prep_time_minutes": prep_time_minutes,
+        "driver_availability": 1.0,
+        "traffic_factor": traffic_factor,
     }
 
     if order_id:
-        payload["orderId"] = order_id
+        payload["order_id"] = order_id
 
+    print("ETA PAYLOAD:", payload, flush=True)
+    
     response = await client.post(
         f"{settings.eta_service_url}/predict-eta",
         json=payload,
@@ -35,4 +37,4 @@ async def get_eta(
 
     response.raise_for_status()
 
-    return int(response.json()["estimatedDeliveryMinutes"])
+    return int(response.json()["estimated_delivery_minutes"])

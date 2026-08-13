@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { api } from '../api';
 
-const DEFAULT_ITEM = { menuItemId: '', quantity: 1, unitPriceCents: 1000 };
+const DEFAULT_ITEM = { menuItemId: 'item-burger', quantity: 1, unitPriceCents: 1000 };
 
 export default function OrderForm({ onCreated }) {
   const [form, setForm] = useState({
     customerId:   'cust-001',
-    restaurantId: '',
+    restaurantId: 'rest-001',
     items:        [{ ...DEFAULT_ITEM }],
     street:       '1 Market St',
     city:         'San Francisco',
@@ -37,8 +37,8 @@ export default function OrderForm({ onCreated }) {
         customerId:   form.customerId,
         restaurantId: form.restaurantId,
         items: form.items.map(it => ({
-          menuItemId:    it.menuItemId,
-          quantity:      Number(it.quantity),
+          menuItemId:     it.menuItemId,
+          quantity:       Number(it.quantity),
           unitPriceCents: Number(it.unitPriceCents),
         })),
         deliveryAddress: {
@@ -58,16 +58,30 @@ export default function OrderForm({ onCreated }) {
   };
 
   return (
-    <form className="card" onSubmit={submit}>
+    <form id="create-order-form" className="card" onSubmit={submit}>
       <h2>Create Order</h2>
 
       <div className="field-row">
-        <label>Customer ID
-          <input value={form.customerId} onChange={e => set('customerId', e.target.value)} required />
+        <label htmlFor="order-customer-id">Customer ID
+          <input
+            id="order-customer-id"
+            name="customerId"
+            value={form.customerId}
+            onChange={e => set('customerId', e.target.value)}
+            autoComplete="off"
+            required
+          />
         </label>
-        <label>Restaurant ID
-          <input value={form.restaurantId} onChange={e => set('restaurantId', e.target.value)}
-            placeholder="paste restaurant UUID" required />
+        <label htmlFor="order-restaurant-id">Restaurant ID
+          <input
+            id="order-restaurant-id"
+            name="restaurantId"
+            value={form.restaurantId}
+            onChange={e => set('restaurantId', e.target.value)}
+            placeholder="paste restaurant UUID"
+            autoComplete="off"
+            required
+          />
         </label>
       </div>
 
@@ -75,18 +89,36 @@ export default function OrderForm({ onCreated }) {
         <legend>Items</legend>
         {form.items.map((item, i) => (
           <div key={i} className="item-row">
-            <label>Menu Item ID
-              <input value={item.menuItemId}
+            <label htmlFor={`item-${i}-id`}>Menu Item ID
+              <input
+                id={`item-${i}-id`}
+                name={`item-${i}-menuItemId`}
+                value={item.menuItemId}
                 onChange={e => setItem(i, 'menuItemId', e.target.value)}
-                placeholder="item-burger" required />
+                placeholder="item-burger"
+                autoComplete="off"
+                required
+              />
             </label>
-            <label>Qty
-              <input type="number" min="1" value={item.quantity}
-                onChange={e => setItem(i, 'quantity', e.target.value)} />
+            <label htmlFor={`item-${i}-qty`}>Qty
+              <input
+                id={`item-${i}-qty`}
+                name={`item-${i}-quantity`}
+                type="number"
+                min="1"
+                value={item.quantity}
+                onChange={e => setItem(i, 'quantity', e.target.value)}
+              />
             </label>
-            <label>Price (cents)
-              <input type="number" min="0" value={item.unitPriceCents}
-                onChange={e => setItem(i, 'unitPriceCents', e.target.value)} />
+            <label htmlFor={`item-${i}-price`}>Price (cents)
+              <input
+                id={`item-${i}-price`}
+                name={`item-${i}-unitPriceCents`}
+                type="number"
+                min="0"
+                value={item.unitPriceCents}
+                onChange={e => setItem(i, 'unitPriceCents', e.target.value)}
+              />
             </label>
             {form.items.length > 1 &&
               <button type="button" className="btn-ghost" onClick={() => removeItem(i)}>✕</button>}
@@ -98,27 +130,57 @@ export default function OrderForm({ onCreated }) {
       <fieldset>
         <legend>Delivery Address</legend>
         <div className="field-row">
-          <label>Street
-            <input value={form.street} onChange={e => set('street', e.target.value)} required />
+          <label htmlFor="order-street">Street
+            <input
+              id="order-street"
+              name="street"
+              value={form.street}
+              onChange={e => set('street', e.target.value)}
+              autoComplete="street-address"
+              required
+            />
           </label>
-          <label>City
-            <input value={form.city} onChange={e => set('city', e.target.value)} required />
+          <label htmlFor="order-city">City
+            <input
+              id="order-city"
+              name="city"
+              value={form.city}
+              onChange={e => set('city', e.target.value)}
+              autoComplete="address-level2"
+              required
+            />
           </label>
         </div>
         <div className="field-row">
-          <label>Lat
-            <input type="number" step="any" value={form.lat}
-              onChange={e => set('lat', e.target.value)} required />
+          <label htmlFor="order-lat">Lat
+            <input
+              id="order-lat"
+              name="lat"
+              type="number"
+              step="any"
+              value={form.lat}
+              onChange={e => set('lat', e.target.value)}
+              autoComplete="off"
+              required
+            />
           </label>
-          <label>Lng
-            <input type="number" step="any" value={form.lng}
-              onChange={e => set('lng', e.target.value)} required />
+          <label htmlFor="order-lng">Lng
+            <input
+              id="order-lng"
+              name="lng"
+              type="number"
+              step="any"
+              value={form.lng}
+              onChange={e => set('lng', e.target.value)}
+              autoComplete="off"
+              required
+            />
           </label>
         </div>
       </fieldset>
 
       {error && <div className="error">{error}</div>}
-      <button className="btn-primary" disabled={loading}>
+      <button id="create-order-submit" className="btn-primary" disabled={loading}>
         {loading ? 'Creating…' : 'Create Order'}
       </button>
     </form>

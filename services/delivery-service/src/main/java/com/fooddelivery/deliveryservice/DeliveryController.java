@@ -19,18 +19,53 @@ public class DeliveryController {
     return deliveryService
         .findByOrderId(orderId)
         .<ResponseEntity<?>>map(
-            d ->
-                ResponseEntity.ok(
-                    Map.of(
-                        "orderId", d.getOrderId(),
-                        "driverId", d.getDriverId(),
-                        "status", d.getStatus().name(),
-                        "etaMinutes", d.getEtaMinutes() != null ? d.getEtaMinutes() : 0,
-                        "deliveredAt",
-                            d.getDeliveredAt() != null ? d.getDeliveredAt().toString() : null)))
+            d -> {
+              Map<String, Object> response = new java.util.HashMap<>();
+
+              response.put("orderId", d.getOrderId());
+              response.put("driverId", d.getDriverId());
+              response.put("status", d.getStatus().name());
+              response.put(
+                  "etaMinutes", d.getEtaMinutes() != null ? d.getEtaMinutes() : 0);
+
+              if (d.getDeliveredAt() != null) {
+                response.put("deliveredAt", d.getDeliveredAt().toString());
+              } else {
+                response.put("deliveredAt", null);
+              }
+
+              return ResponseEntity.ok(response);
+            })
         .orElse(
             ResponseEntity.status(404)
                 .body(Map.of("error", "Delivery not found for orderId=" + orderId)));
+  }
+
+  /**
+   * Test-harness only: directly seed a delivery row in ASSIGNED state,
+   * bypassing the Kafka DriverAssignedEvent flow.
+   * Body: { "orderId": "...", "driverId": "..." }
+   */
+  @PostMapping("/seed")
+  public ResponseEntity<Map<String, Object>> seed(
+      @RequestBody Map<String, String> body) {
+
+    String orderId  = body.get("orderId");
+    String driverId = body.get("driverId");
+
+    if (orderId == null || orderId.isBlank()) {
+      return ResponseEntity.badRequest().body(Map.of("error", "orderId is required"));
+    }
+    if (driverId == null || driverId.isBlank()) {
+      return ResponseEntity.badRequest().body(Map.of("error", "driverId is required"));
+    }
+
+    var delivery = deliveryService.seedForTesting(orderId, driverId);
+    return ResponseEntity.ok(
+        Map.of(
+            "orderId", delivery.getOrderId(),
+            "driverId", delivery.getDriverId(),
+            "status", delivery.getStatus().name()));
   }
 
   @PatchMapping("/{orderId}/status")
@@ -49,10 +84,16 @@ public class DeliveryController {
       return ResponseEntity.badRequest().body(Map.of("error", "unknown status: " + statusStr));
     }
 
-    var delivery = deliveryService.advanceStatus(orderId, next);
-    return ResponseEntity.ok(
-        Map.of(
-            "orderId", delivery.getOrderId(),
-            "status", delivery.getStatus().name()));
+    try {
+      var delivery = deliveryService.advanceStatus(orderId, next);
+      return ResponseEntity.ok(
+          Map.of(
+              "orderId", delivery.getOrderId(),
+              "status", delivery.getStatus().name()));
+    } catch (DeliveryService.DeliveryNotFoundException ex) {
+      return ResponseEntity.status(404).body(Map.of("error", ex.getMessage()));
+    } catch (DeliveryService.InvalidStatusTransitionException ex) {
+      return ResponseEntity.status(409).body(Map.of("error", ex.getMessage()));
+    }
   }
 }

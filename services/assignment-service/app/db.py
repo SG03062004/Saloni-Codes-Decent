@@ -30,12 +30,24 @@ async def upsert_driver_location(
         text(
             """
             INSERT INTO driver_locations (driver_id, location, is_available)
-            VALUES (:driver_id, ST_SRID(POINT(:lat, :lng), 4326), :is_available)
+            VALUES (
+                :driver_id,
+                ST_GeomFromText(
+                    CONCAT('POINT(', :lng, ' ', :lat, ')'),
+                    4326,
+                    'axis-order=long-lat'
+                ),
+                :is_available
+            )
             ON DUPLICATE KEY UPDATE
-                location     = ST_SRID(POINT(:lat, :lng), 4326),
+                location = ST_GeomFromText(
+                    CONCAT('POINT(', :lng, ' ', :lat, ')'),
+                    4326,
+                    'axis-order=long-lat'
+                ),
                 is_available = :is_available,
-                updated_at   = CURRENT_TIMESTAMP
-        """
+                updated_at = CURRENT_TIMESTAMP
+            """
         ),
         {
             "driver_id": driver_id,
@@ -53,29 +65,41 @@ async def find_nearest_drivers(
     order_lng: float,
     limit: int = 5,
 ) -> list[DriverCandidate]:
-    """
-    MySQL ST_Distance_Sphere on a SPATIAL INDEX.
-    Throughput ceiling: suitable for <10k concurrent drivers per region.
-    At ride-share scale, replace with a geo cache (see ADR-001).
-    """
+
     rows = await session.execute(
         text(
             """
-            SELECT driver_id,
-                   ST_Y(location) AS lat,
-                   ST_X(location) AS lng,
-                   ST_Distance_Sphere(location, ST_SRID(POINT(:order_lat, :order_lng), 4326)) AS distance_m
+            SELECT
+                driver_id,
+                ST_Latitude(location) AS lat,
+                ST_Longitude(location) AS lng,
+                ST_Distance_Sphere(
+                    location,
+                    ST_GeomFromText(
+                        CONCAT('POINT(', :order_lng, ' ', :order_lat, ')'),
+                        4326,
+                        'axis-order=long-lat'
+                    )
+                ) AS distance_m
             FROM driver_locations
             WHERE is_available = 1
             ORDER BY distance_m ASC
             LIMIT :lim
-        """
+            """
         ),
-        {"order_lat": order_lat, "order_lng": order_lng, "lim": limit},
+        {
+            "order_lat": order_lat,
+            "order_lng": order_lng,
+            "lim": limit,
+        },
     )
+
     return [
         DriverCandidate(
-            driver_id=r.driver_id, lat=r.lat, lng=r.lng, distance_m=r.distance_m
+            driver_id=r.driver_id,
+            lat=r.lat,
+            lng=r.lng,
+            distance_m=r.distance_m,
         )
         for r in rows.mappings()
     ]

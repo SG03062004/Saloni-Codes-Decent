@@ -1,9 +1,12 @@
 from __future__ import annotations
+from app.logging_config import get_logger
 
 import httpx
 
 from app.eta_client import get_eta
 from app.models import DriverCandidate, Settings
+
+log = get_logger("assignment-service.assignment")
 
 # Weight for combining distance and ETA into a single score (tunable).
 # Lower score = better candidate.
@@ -33,8 +36,16 @@ async def pick_best_driver(
             eta = await get_eta(
                 http_client, settings, candidate, prep_time_minutes, order_id=order_id
             )
-        except Exception:
-            continue  # skip unreachable ETA service for this candidate
+        except Exception as exc:
+            log.error(
+                "eta_failed",
+                extra={
+                    "driverId": candidate.driver_id,
+                    "orderId": order_id,
+                    "error": str(exc),
+                },
+            )
+            continue
 
         norm_dist = candidate.distance_m / max_dist
         score = DISTANCE_WEIGHT * norm_dist + ETA_WEIGHT * eta

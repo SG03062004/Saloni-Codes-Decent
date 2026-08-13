@@ -57,7 +57,7 @@ class OrderCreatedPayload(BaseModel):
 class OrderCreatedEvent(BaseModel):
     eventId: str
     eventType: str
-    timestamp: str
+    timestamp: float
     version: str
     payload: OrderCreatedPayload
 

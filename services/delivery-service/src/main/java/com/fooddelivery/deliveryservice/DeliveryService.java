@@ -49,6 +49,31 @@ public class DeliveryService {
     }
   }
 
+  /**
+   * Test-harness only: seed a delivery row in ASSIGNED state directly in the DB,
+   * bypassing the Kafka DriverAssignedEvent flow. Idempotent — returns existing row
+   * if already present.
+   */
+  @Transactional
+  public Delivery seedForTesting(String orderId, String driverId) {
+    MDC.put("orderId", orderId);
+    try {
+      return repo.findByOrderId(orderId).orElseGet(() -> {
+        var delivery = new Delivery();
+        delivery.setId(UUID.randomUUID().toString());
+        delivery.setOrderId(orderId);
+        delivery.setDriverId(driverId);
+        delivery.setStatus(DeliveryStatus.ASSIGNED);
+        delivery.setEtaMinutes(10);
+        var saved = repo.save(delivery);
+        log.info("delivery seeded for testing status=ASSIGNED driverId={}", driverId);
+        return saved;
+      });
+    } finally {
+      MDC.clear();
+    }
+  }
+
   @Transactional
   public Delivery advanceStatus(String orderId, DeliveryStatus next) {
     MDC.put("orderId", orderId);
