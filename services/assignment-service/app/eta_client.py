@@ -28,7 +28,7 @@ async def get_eta(
         payload["order_id"] = order_id
 
     print("ETA PAYLOAD:", payload, flush=True)
-    
+
     response = await client.post(
         f"{settings.eta_service_url}/predict-eta",
         json=payload,
